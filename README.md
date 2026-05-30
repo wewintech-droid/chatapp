@@ -4,8 +4,6 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
 ## React Compiler
 
@@ -70,3 +68,20 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deployment
+
+Frontend (Netlify)
+
+- This project is configured for Netlify. A `netlify.toml` is included at the repo root.
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Set the environment variable `VITE_WS_URL` in Netlify to your backend WebSocket URL, e.g. `wss://your-backend.onrender.com/ws`.
+
+Backend (Render)
+
+- The backend WebSocket server is in the `server/` folder and reads `HOST` and `PORT` from the environment.
+- A `Procfile` is included for convenience: `web: python ws_server.py`.
+- To deploy on Render: create a new Web Service, connect this repo, and Render will run the `Procfile` command.
+
+After both services are deployed, make sure `VITE_WS_URL` points to `wss://<render-service>.onrender.com/ws` on Netlify.

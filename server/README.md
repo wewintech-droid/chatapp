@@ -23,3 +23,25 @@ const WS_URL = "ws://127.0.0.1:8000/ws";
 ```
 
 Once the server is running, open the app in two browsers and use different usernames to chat.
+
+## Deploying to Render
+
+This server is ready to deploy on Render as a Web Service. A `Procfile` is included with a simple start command.
+
+Steps:
+
+1. Push the repository to GitHub (already done).
+2. In Render dashboard, create a new "Web Service" and connect your repo.
+3. Set the start command (Render will read `Procfile` automatically) or use:
+
+```
+python ws_server.py
+```
+
+4. Set environment variables if needed:
+- `PORT` (Render will provide one automatically)
+- `HOST` (defaults to `0.0.0.0`)
+
+After deployment you will have a public URL like `https://your-service.onrender.com` — use `wss://your-service.onrender.com/ws` as the frontend `VITE_WS_URL`.
+
+Note: Render supports WebSockets and will terminate TLS for `wss://` connections automatically.

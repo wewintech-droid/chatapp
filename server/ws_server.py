@@ -1,12 +1,15 @@
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from websockets import serve
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-PORT = 8000
+# Read host/port from environment for flexible deployment (Render, Docker, etc.)
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", os.getenv("WS_PORT", "8000")))
 
 
 class ConnectionManager:
@@ -213,8 +216,8 @@ async def ws_handler(websocket: Any) -> None:
 
 
 async def main() -> None:
-    print(f"Starting WebSocket server on ws://127.0.0.1:{PORT}/ws")
-    async with serve(ws_handler, "0.0.0.0", PORT):
+    print(f"Starting WebSocket server on ws://{HOST}:{PORT}/ws")
+    async with serve(ws_handler, HOST, PORT):
         await asyncio.gather(asyncio.Future(), manager.cleanup_history())
 
 
