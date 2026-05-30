@@ -17,16 +17,19 @@ type WebSocketHandlers = {
 };
 
 const getWebSocketUrls = () => {
-  const envUrl = import.meta.env.VITE_WS_URL;
+  const envUrl = typeof import.meta.env.VITE_WS_URL === 'string' ? import.meta.env.VITE_WS_URL.trim() : '';
+  const fallbackEnvUrl = typeof import.meta.env.VITE_WS_FALLBACK_URL === 'string' ? import.meta.env.VITE_WS_FALLBACK_URL.trim() : '';
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   const hostname = window.location.hostname || '127.0.0.1';
-  const primaryUrl = typeof envUrl === 'string' && envUrl.trim()
-    ? envUrl
-    : `${protocol}://${hostname}:8000/ws`;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  const localUrl = `${protocol}://${hostname}:8000/ws`;
 
-  const fallbackUrl = typeof import.meta.env.VITE_WS_FALLBACK_URL === 'string' && import.meta.env.VITE_WS_FALLBACK_URL.trim()
-    ? import.meta.env.VITE_WS_FALLBACK_URL
-    : 'wss://free.blr2.piesocket.com/v3/1?api_key=YnqGBxsb4JcET5RDMuKwGbPwFHbxCjUBRRoObljf&notify_self=1';
+  const fallbackUrl = fallbackEnvUrl || 'wss://free.blr2.piesocket.com/v3/1?api_key=YnqGBxsb4JcET5RDMuKwGbPwFHbxCjUBRRoObljf&notify_self=1';
+  const primaryUrl = envUrl || (isLocalhost ? localUrl : fallbackUrl);
+
+  if (!envUrl && !isLocalhost) {
+    console.warn('VITE_WS_URL is not set in production; using fallback WebSocket provider instead of local host.');
+  }
 
   return [primaryUrl, fallbackUrl];
 };
