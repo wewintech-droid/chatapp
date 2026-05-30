@@ -49,3 +49,9 @@ After deployment you will have a public URL like `https://your-service.onrender.
 Copy `server/.env.example` to `server/.env` if you want to use a local environment file for `HOST` and `PORT`.
 
 Note: Render supports WebSockets and will terminate TLS for `wss://` connections automatically.
+
+## Recommended environment variables
+
+- `PYTHONUNBUFFERED=1` — set this on Render to ensure Python stdout/stderr are not buffered so logs appear in real time in the Render dashboard. You can add it in the Render service's Environment section.
+
+Copy `server/.env.example` to `server/.env` for local testing if desired.
