@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Hash, Send, Check, CheckCheck } from 'lucide-react';
+import { Hash, Send, Check, CheckCheck, PhoneCall, Video, Bookmark, Palette } from 'lucide-react';
 import type { Message, Room, Contact, CallOfferPayload, CallAnswerPayload, IceCandidatePayload } from '../types';
 
 interface ChatAreaProps {
@@ -22,6 +22,9 @@ interface ChatAreaProps {
   sendCallAnswer: (payload: CallAnswerPayload) => void;
   sendIceCandidate: (payload: IceCandidatePayload) => void;
   sendCallEnd: (payload: { from: string; to?: string; roomId?: string }) => void;
+  onUpdateRoomName: (roomId: string, newName: string) => void;
+  chatTheme: 'midnight' | 'ocean' | 'forest' | 'slate';
+  setChatTheme: (theme: 'midnight' | 'ocean' | 'forest' | 'slate') => void;
 }
 
 type CallSignal =
@@ -44,12 +47,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   privacyMode,
   savedChats,
   onSaveChat,
+  onPrivacyChange,
   callSignal,
   sendCallOffer,
   sendCallAnswer,
   sendIceCandidate,
   sendCallEnd,
-  onPrivacyChange,
+  onUpdateRoomName,
+  chatTheme,
+  setChatTheme,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -60,6 +66,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [callStatus, setCallStatus] = useState<'idle' | 'incoming' | 'connecting' | 'connected'>('idle');
   const [callMode, setCallMode] = useState<'voice' | 'video' | null>(null);
   const [incomingCall, setIncomingCall] = useState<Extract<CallSignal, { type: 'offer' }> | null>(null);
+  const roomNameInputRef = useRef<HTMLInputElement | null>(null);
 
   const cleanupCall = useCallback(() => {
     pcRef.current?.close();
@@ -228,8 +235,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     : [];
 
   const currentMessages = getChatKey() ? messages[getChatKey()] || [] : [];
+  const unreadCount = currentMessages.filter((msg) => msg.from !== username && !(msg.readBy || []).includes(username)).length;
 
   const isGroupChat = !!activeRoom;
+
+  const themeStyles: Record<string, string> = {
+    midnight: 'bg-[#313338]',
+    ocean: 'bg-[#142B3D]',
+    forest: 'bg-[#122818]',
+    slate: 'bg-[#252D34]',
+  };
 
   // Get last seen for DMs
   const getLastSeen = (user: string) => {
@@ -239,7 +254,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#313338] relative">
+    <div className={`flex-1 flex flex-col relative ${themeStyles[chatTheme]}`}>
       {/* Header */}
       <div className="h-14 border-b border-black/20 flex items-center px-5 justify-between bg-[#313338]">
         <div className="flex items-center gap-3">
@@ -265,30 +280,87 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </div>
 
+      <div className="px-5 py-3 bg-[#292C31] border-b border-black/20">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#949BA4]">Chat Settings</p>
+            <p className="text-sm text-[#DBDEE1]">Customize this conversation and keep privacy controls close.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {isGroupChat && (
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#23262B] px-3 py-2">
+                <input
+                  key={activeRoom?.id || 'room-input'}
+                  ref={roomNameInputRef}
+                  defaultValue={activeRoom?.name || ''}
+                  onBlur={() => {
+                    if (!activeRoom || !roomNameInputRef.current) return;
+                    const value = roomNameInputRef.current.value.trim();
+                    onUpdateRoomName(activeRoom.id, value || activeRoom.name);
+                  }}
+                  className="bg-transparent outline-none text-sm text-white"
+                  style={{ minWidth: 180 }}
+                  placeholder="Edit room name"
+                />
+                <button
+                  onClick={() => {
+                    if (!activeRoom || !roomNameInputRef.current) return;
+                    const value = roomNameInputRef.current.value.trim();
+                    onUpdateRoomName(activeRoom.id, value || activeRoom.name);
+                  }}
+                  className="p-2 rounded-xl bg-[#5865F2] text-white hover:bg-[#4752C4]"
+                >
+                  <Bookmark size={16} />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#23262B] px-3 py-2">
+              <Palette size={16} className="text-[#949BA4]" />
+              <select
+                value={chatTheme}
+                onChange={(e) => setChatTheme(e.target.value as 'midnight' | 'ocean' | 'forest' | 'slate')}
+                className="bg-transparent outline-none text-sm text-white"
+              >
+                <option value="midnight">Midnight</option>
+                <option value="ocean">Ocean</option>
+                <option value="forest">Forest</option>
+                <option value="slate">Slate</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      {(activeContact || activeRoom) && (
+        <div className="px-5 py-2 text-xs text-[#94A0B4] border-b border-black/20">
+          {currentMessages.length} message{currentMessages.length === 1 ? '' : 's'} · {unreadCount} unread
+        </div>
+      )}
       <div className="flex items-center justify-between px-5 py-3 bg-[#292C31] border-b border-black/20 gap-3">
         <div className="flex flex-wrap items-center gap-2 text-sm text-[#DBDEE1]">
           {activeContact || activeRoom ? (
             <>
               <button
                 onClick={() => startCall('voice')}
-                className="px-3 py-2 rounded-xl bg-[#23A559] hover:bg-[#1F8D43] transition"
+                className="p-3 rounded-xl bg-[#23A559] hover:bg-[#1F8D43] transition"
                 disabled={!activeContact && !activeRoom}
               >
-                Voice Call
+                <PhoneCall size={18} />
               </button>
               <button
                 onClick={() => startCall('video')}
-                className="px-3 py-2 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] transition"
+                className="p-3 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] transition"
                 disabled={!activeContact && !activeRoom}
               >
-                Video Call
+                <Video size={18} />
               </button>
-              <button
-                onClick={() => onSaveChat(getChatKey(), !savedChats[getChatKey()])}
-                className="px-3 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition"
-              >
-                {savedChats[getChatKey()] ? 'Saved chat' : 'Save chat for 24h retention'}
-              </button>
+              {inputValue.trim() && (
+                <button
+                  onClick={() => onSaveChat(getChatKey(), !savedChats[getChatKey()])}
+                  className="px-3 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition"
+                >
+                  {savedChats[getChatKey()] ? 'Saved' : 'Save chat'}
+                </button>
+              )}
               <button
                 onClick={() => onPrivacyChange(!privacyMode)}
                 className={`px-3 py-2 rounded-xl transition ${privacyMode ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#6B7280] hover:bg-[#4B5563]'}`}
@@ -300,7 +372,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                   onClick={hangUp}
                   className="px-3 py-2 rounded-xl bg-[#EF4444] text-white hover:bg-[#DC2626] transition"
                 >
-                  End Call
+                  End
                 </button>
               )}
             </>

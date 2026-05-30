@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import LoginScreen from './components/LoginScreen';
 import UsernameSetup from './components/UsernameSetup';
 import Sidebar from './components/Sidebar';
@@ -53,6 +53,8 @@ const App: React.FC = () => {
   const [searchUser, setSearchUser] = useState<string>('');
   const [savedChats, setSavedChats] = useState<Record<string, boolean>>({});
   const [privacyMode, setPrivacyMode] = useState<boolean>(false);
+  const [ignoredUsers, setIgnoredUsers] = useState<string[]>([]);
+  const [chatTheme, setChatTheme] = useState<'midnight' | 'ocean' | 'forest' | 'slate'>('midnight');
   const [callSignal, setCallSignal] = useState<CallSignal | null>(null);
 
   const handleIncomingMessage = useCallback((message: Message) => {
@@ -121,6 +123,37 @@ const App: React.FC = () => {
         }))
       };
     });
+  }, []);
+
+  const unreadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.entries(messages).forEach(([chatKey, msgs]) => {
+      counts[chatKey] = msgs.filter((msg) => msg.from !== username && !(msg.readBy || []).includes(username)).length;
+    });
+    return counts;
+  }, [messages, username]);
+
+  const handleToggleConnect = useCallback((user: string) => {
+    if (activeContact === user) {
+      setActiveContact(null);
+      return;
+    }
+    if (!contacts.some((contact) => contact.username === user)) {
+      setContacts((prev) => [...prev, { username: user, status: 'online', bio: 'New connection', lastSeen: new Date().toISOString() }]);
+    }
+    setActiveContact(user);
+    setActiveRoom(null);
+  }, [activeContact, contacts]);
+
+  const handleIgnoreContact = useCallback((user: string) => {
+    setIgnoredUsers((prev) => (prev.includes(user) ? prev : [...prev, user]));
+    if (activeContact === user) {
+      setActiveContact(null);
+    }
+  }, [activeContact]);
+
+  const handleUpdateRoomName = useCallback((roomId: string, newName: string) => {
+    setRooms((prev) => prev.map((room) => room.id === roomId ? { ...room, name: newName } : room));
   }, []);
 
   // WebSocket Hook
@@ -324,17 +357,14 @@ const App: React.FC = () => {
         username={username}
         onCreateRoom={createGroupRoom}
         onAddContact={() => setIsAdding(true)}
-        onAddUser={(user) => {
-          if (!contacts.some(contact => contact.username === user)) {
-            setContacts(prev => [...prev, { username: user, status: 'online', bio: 'New connection', lastSeen: new Date().toISOString() }]);
-          }
-          setActiveContact(user);
-          setActiveRoom(null);
-        }}
+        onToggleConnect={handleToggleConnect}
+        onIgnoreContact={handleIgnoreContact}
         onLogout={() => setStep('login')}
         onlineUsers={onlineUsers}
         typingUsers={typingUsers}
         activeChatUsers={activeChatUsers}
+        unreadCounts={unreadCounts}
+        ignoredUsers={ignoredUsers}
       />
 
       <ChatArea
@@ -357,6 +387,9 @@ const App: React.FC = () => {
         sendIceCandidate={sendIceCandidate}
         sendCallEnd={sendCallEnd}
         onPrivacyChange={togglePrivacyMode}
+        onUpdateRoomName={handleUpdateRoomName}
+        chatTheme={chatTheme}
+        setChatTheme={setChatTheme}
       />
 
       {isAdding && (
