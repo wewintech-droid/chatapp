@@ -49,6 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-bold uppercase tracking-widest text-[#949BA4]">Online Users</span>
             <span className="text-xs text-[#23A559]">{onlineUsers.size - (onlineUsers.has(username) ? 1 : 0)} active</span>
           </div>
+          <p className="px-2 text-[10px] uppercase tracking-[0.3em] text-[#6B7280] mb-3">Tap Connect to start a private chat with someone online.</p>
           {Array.from(onlineUsers)
             .filter((user) => user !== username)
             .map((user) => {

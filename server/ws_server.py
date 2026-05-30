@@ -84,6 +84,10 @@ manager = ConnectionManager()
 
 
 async def broadcast_or_personal(message: dict, payload: dict, username: str) -> None:
+    if payload.get("roomId"):
+        await manager.broadcast(message, exclude=username)
+        return
+
     target = payload.get("to")
     if isinstance(target, str) and target:
         await manager.send_personal(message, target)
@@ -106,10 +110,29 @@ async def handle_message(message: dict, websocket: Any, username: str) -> None:
             if isinstance(target, str) and target:
                 recipients.append(target)
                 await manager.send_personal({"type": "message", "payload": payload}, target)
-                await manager.safe_send(websocket, {"type": "message_delivered", "payload": {"to": target}})
+                await manager.safe_send(websocket, {
+                    "type": "message_delivered",
+                    "payload": {
+                        "messageId": payload.get("id"),
+                        "chatKey": target,
+                        "to": target,
+                        "timestamp": payload.get("timestamp"),
+                    }
+                })
             else:
-                await manager.safe_send(websocket, {"type": "message", "payload": payload})
-                await manager.safe_send(websocket, {"type": "message_delivered", "payload": {"to": username}})
+                await manager.safe_send(websocket, {
+                    "type": "message",
+                    "payload": payload
+                })
+                await manager.safe_send(websocket, {
+                    "type": "message_delivered",
+                    "payload": {
+                        "messageId": payload.get("id"),
+                        "chatKey": username,
+                        "to": username,
+                        "timestamp": payload.get("timestamp"),
+                    }
+                })
             await manager.store_message(payload, target or username, recipients)
             return
 
@@ -133,6 +156,16 @@ async def handle_message(message: dict, websocket: Any, username: str) -> None:
                 entry["expires_at"] = None if entry["saved"] else entry.get("expires_at")
                 break
         await manager.safe_send(websocket, {"type": "message_saved", "payload": payload})
+        return
+
+    if message_type == "message_read":
+        target = payload.get("to")
+        if isinstance(target, str) and target:
+            await manager.send_personal({"type": "message_read", "payload": payload}, target)
+        elif payload.get("roomId"):
+            await manager.broadcast({"type": "message_read", "payload": payload}, exclude=username)
+        else:
+            await manager.broadcast({"type": "message_read", "payload": payload}, exclude=username)
         return
 
     if message_type == "privacy_update":

@@ -223,6 +223,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   }, [callSignal, cleanupCall, username]);
 
+  const activeRoomTypingUsers = activeRoom
+    ? activeRoom.participants.filter((participant) => participant !== username && typingUsers[participant])
+    : [];
+
   const currentMessages = getChatKey() ? messages[getChatKey()] || [] : [];
 
   const isGroupChat = !!activeRoom;
@@ -367,7 +371,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
             {currentMessages.map((msg) => {
               const isOwnMessage = msg.from === username;
-              const readCount = msg.readBy?.length || 0;
+              const hasReadByOthers = msg.readBy?.some((user) => user !== username) ?? false;
+              const isDelivered = !!msg.isDelivered;
 
               return (
                 <div key={msg.id} className={`flex gap-4 ${isOwnMessage ? 'justify-end' : ''}`}>
@@ -392,8 +397,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     {/* Read Receipts */}
                     {isOwnMessage && (
                       <div className="flex justify-end mt-1">
-                        {readCount >= 1 ? (
+                        {hasReadByOthers ? (
                           <CheckCheck size={16} className="text-[#23A559]" />
+                        ) : isDelivered ? (
+                          <CheckCheck size={16} className="text-[#949BA4]" />
                         ) : (
                           <Check size={16} className="text-[#949BA4]" />
                         )}
@@ -405,7 +412,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             })}
 
             {/* Typing Indicator */}
-            {activeContact && typingUsers[activeContact] && (
+            {(activeContact && typingUsers[activeContact]) || activeRoomTypingUsers.length > 0 ? (
               <div className="flex gap-4 pl-14">
                 <div className="text-[#23A559] text-sm flex items-center gap-2">
                   <div className="flex gap-1">
@@ -413,10 +420,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                     <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                   </div>
-                  <span>@{activeContact} is typing...</span>
+                  <span>
+                    {activeRoomTypingUsers.length > 0
+                      ? activeRoomTypingUsers.length === 1
+                        ? `@${activeRoomTypingUsers[0]} is typing...`
+                        : `${activeRoomTypingUsers.length} people are typing...`
+                      : `@${activeContact} is typing...`}
+                  </span>
                 </div>
               </div>
-            )}
+            ) : null}
           </>
         )}
         <div ref={chatEndRef} />

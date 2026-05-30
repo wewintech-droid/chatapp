@@ -80,6 +80,33 @@ const App: React.FC = () => {
     setCallSignal(signal);
   }, []);
 
+  const handleDeliveryReceipt = useCallback((payload: { messageId: string; chatKey: string; roomId?: string }) => {
+    setMessages(prev => {
+      const chat = prev[payload.chatKey] || [];
+      return {
+        ...prev,
+        [payload.chatKey]: chat.map((msg) =>
+          msg.id === payload.messageId ? { ...msg, isDelivered: true } : msg
+        ),
+      };
+    });
+  }, []);
+
+  const handleReadReceipt = useCallback((payload: { messageId: string; chatKey: string; from: string }) => {
+    setMessages(prev => {
+      const chat = prev[payload.chatKey] || [];
+      return {
+        ...prev,
+        [payload.chatKey]: chat.map((msg) => {
+          if (msg.id !== payload.messageId) return msg;
+          const existing = msg.readBy || [];
+          if (existing.includes(payload.from)) return msg;
+          return { ...msg, readBy: [...existing, payload.from] };
+        }),
+      };
+    });
+  }, []);
+
   const handleSaveChat = useCallback((chatKey: string, save: boolean) => {
     setSavedChats(prev => ({ ...prev, [chatKey]: save }));
     setMessages(prev => {
@@ -104,6 +131,7 @@ const App: React.FC = () => {
     typingUsers,
     activeChatUsers,
     sendMessage: sendViaSocket,
+    sendReadReceipt,
     sendPrivacyUpdate,
     sendCallOffer,
     sendCallAnswer,
@@ -118,12 +146,46 @@ const App: React.FC = () => {
     onPrivacyUpdate: (payload) => {
       console.log('Privacy update from server:', payload);
     },
+    onMessageDelivered: handleDeliveryReceipt,
+    onMessageRead: handleReadReceipt,
   });
 
   const togglePrivacyMode = useCallback((enabled: boolean) => {
     setPrivacyMode(enabled);
     sendPrivacyUpdate({ username, privacyMode: enabled });
   }, [sendPrivacyUpdate, username]);
+
+  useEffect(() => {
+    const chatKey = activeRoom?.id || activeContact;
+    if (!chatKey) return;
+
+    const timeout = window.setTimeout(() => {
+      const chatMessages = messages[chatKey] || [];
+      const unreadMessages = chatMessages.filter((msg) => msg.from !== username && !(msg.readBy || []).includes(username));
+      if (!unreadMessages.length) return;
+
+      unreadMessages.forEach((msg) => {
+        sendReadReceipt({
+          messageId: msg.id,
+          chatKey,
+          from: username,
+          to: activeRoom ? undefined : msg.from,
+          roomId: activeRoom?.id,
+        });
+      });
+
+      setMessages((prev) => ({
+        ...prev,
+        [chatKey]: (prev[chatKey] || []).map((msg) =>
+          msg.from !== username && !(msg.readBy || []).includes(username)
+            ? { ...msg, readBy: [...(msg.readBy || []), username] }
+            : msg
+        ),
+      }));
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeContact, activeRoom, messages, username, sendReadReceipt]);
 
   useEffect(() => {
     const cleanup = window.setInterval(() => {
@@ -186,8 +248,8 @@ const App: React.FC = () => {
       roomId: activeRoom?.id,
       text: inputValue.trim(),
       timestamp: new Date().toISOString(),
-      readBy: [username],
-      isDelivered: true,
+      readBy: [],
+      isDelivered: false,
       saved: isSaved,
       expiresAt: isSaved ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };

@@ -61,6 +61,23 @@ export interface MessageSavePayload {
   saved: boolean;
 }
 
+export interface DeliveryReceiptPayload {
+  messageId: string;
+  chatKey: string;
+  to?: string;
+  roomId?: string;
+  timestamp?: string;
+}
+
+export interface ReadReceiptPayload {
+  messageId: string;
+  chatKey: string;
+  from: string;
+  to?: string;
+  roomId?: string;
+  timestamp?: string;
+}
+
 // Better typed WebSocket Message
 export interface WebSocketMessage {
   type: 
@@ -96,6 +113,8 @@ export interface WebSocketMessage {
     | IceCandidatePayload
     | PrivacyPayload
     | MessageSavePayload
+    | DeliveryReceiptPayload
+    | ReadReceiptPayload
     | { messageId: string; chatKey: string }
     | string[] 
     | unknown;
