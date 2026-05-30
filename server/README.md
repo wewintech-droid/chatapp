@@ -44,4 +44,8 @@ python ws_server.py
 
 After deployment you will have a public URL like `https://your-service.onrender.com` — use `wss://your-service.onrender.com/ws` as the frontend `VITE_WS_URL`.
 
+## Local environment example
+
+Copy `server/.env.example` to `server/.env` if you want to use a local environment file for `HOST` and `PORT`.
+
 Note: Render supports WebSockets and will terminate TLS for `wss://` connections automatically.

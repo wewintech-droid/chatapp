@@ -1,87 +1,76 @@
-# React + TypeScript + Vite
+# Chat App Deployment
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository contains a React + TypeScript frontend and a Python WebSocket backend.
 
-Currently, two official plugins are available:
+- Frontend: `src/` React app built with Vite.
+- Backend: `server/ws_server.py` WebSocket server using `websockets`.
 
+## Connection behavior
 
-## React Compiler
+The frontend connects using the first available endpoint:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. `VITE_WS_URL` from the Netlify environment.
+2. `ws://<hostname>:8000/ws` as the local default.
+3. A fallback PieSocket URL if the primary endpoints fail.
 
-## Expanding the ESLint configuration
+That means the app is ready for production deployment with a Render backend and Netlify frontend.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Local development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Install dependencies and run the frontend locally:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Run the Python backend locally:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd server
+python -m venv .venv
+.\.venv\Scripts\Activate
+pip install -r requirements.txt
+python ws_server.py
 ```
 
-## Deployment
+The frontend will connect to `ws://localhost:8000/ws` by default.
 
-Frontend (Netlify)
+## Ready for Netlify
 
-- This project is configured for Netlify. A `netlify.toml` is included at the repo root.
+Netlify configuration is included in `netlify.toml`.
+
 - Build command: `npm run build`
 - Publish directory: `dist`
-- Set the environment variable `VITE_WS_URL` in Netlify to your backend WebSocket URL, e.g. `wss://your-backend.onrender.com/ws`.
+- Environment variable: `VITE_WS_URL`
 
-Backend (Render)
+Set `VITE_WS_URL` to your deployed backend URL, for example:
 
-- The backend WebSocket server is in the `server/` folder and reads `HOST` and `PORT` from the environment.
-- A `Procfile` is included for convenience: `web: python ws_server.py`.
-- To deploy on Render: create a new Web Service, connect this repo, and Render will run the `Procfile` command.
+```env
+VITE_WS_URL=wss://your-backend.onrender.com/ws
+```
 
-After both services are deployed, make sure `VITE_WS_URL` points to `wss://<render-service>.onrender.com/ws` on Netlify.
+## Ready for Render
+
+The backend is configured to read `HOST` and `PORT` from the environment.
+
+A `Procfile` is included for Render:
+
+```text
+web: python ws_server.py
+```
+
+Render will provide the `PORT` automatically. The backend is ready to accept WebSocket connections at `wss://<your-service>.onrender.com/ws`.
+
+## Environment examples
+
+A root `.env.example` is provided for frontend deployment.
+
+A `server/.env.example` is provided for backend deployment.
+
+## Professional polish
+
+- Added `netlify.toml` for frontend deployment.
+- Added `Procfile` for Render backend deployment.
+- Backend now reads `HOST` and `PORT` from the environment.
+- Documentation updated for deploy-ready usage.
